@@ -1,0 +1,4 @@
+---
+# vars file for ansible-vivado
+
+ise_install_location: "{{ ise_location }}/{{ 'ISE_Lab' if ise_edition == 'lab' else 'ISE' }}/{{ ise_version }}"

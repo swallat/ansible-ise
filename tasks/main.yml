@@ -1,0 +1,92 @@
+---
+# tasks file for fpgaedu.vivado
+- block:
+
+    - name: Detect pre-existing installation in installation location
+      stat:
+        path: "{{ ise_install_location }}"
+      register: ise_existing_setup
+
+    # - name: Create temporary directory for Vivado setup files
+    #   tempfile:
+    #     prefix: vivado_install
+    #     state: directory
+    #   changed_when: "False"
+    #   register: vivado_install_tmp_dir
+    #   when: not vivado_existing_setup.stat.exists
+    #
+    # - name: Extract installer files
+    #   unarchive:
+    #     src: "{{ vivado_installer_archive_path }}"§
+    #     # src: "{{ lookup('env', 'XILINX_VIVADO_INSTALLER_TARBALL') }}"
+    #     dest: "{{ vivado_install_tmp_dir.path }}"
+    #   changed_when: "False"
+    #   when: not vivado_existing_setup.stat.exists
+
+    - name: Locate xsetup executable
+      find:
+        paths:
+          - "{{ lookup('env', 'XILINX_ISE_INSTALLER_PATH') }}"
+        file_type: file
+        patterns: "batchxsetup"
+        recurse: "True"
+      register: ise_find_xsetup
+      failed_when: ise_find_xsetup.matched != 1
+      when: not ise_existing_setup.stat.exists
+
+    - name: Create ISE installer configuration
+      copy:
+        src: "{{ role_path }}/files/ise_system_install.conf"
+        dest: "{{ lookup('env', 'XILINX_ISE_INSTALLER_PATH') }}/ise.conf"
+      changed_when: "False"
+      when: not ise_existing_setup.stat.exists
+
+    - name: Execute ISE installer
+      command: >
+        {{ ise_find_xsetup.files[0].path }}
+        --batch ise.conf
+      when: not ise_existing_setup.stat.exists
+
+    # - name: Check if driver is already installed
+    #   stat:
+    #     path: /etc/udev/rules.d/52-xilinx-digilent-usb.rules
+    #   register: vivado_driver_usb_rules
+
+      # must change working directory or else driver install will fail.
+    # - name: Install board drivers
+    #   become: "true"
+    #   command: "{{ vivado_install_location }}/data/xicom/cable_drivers/lin64/install_script/install_drivers/install_drivers"
+    #   args:
+    #     chdir: "{{ vivado_install_location }}/data/xicom/cable_drivers/lin64/install_script/install_drivers/"
+    #   when:
+    #     - not vivado_driver_usb_rules.stat.exists
+
+
+    # # In order to support headless vm's, as per
+    # # https://www.xilinx.com/support/answers/62553.html, a line in
+    # # base.tcl containing rdi:x11_workaround needs to be removed
+    # - name: remove x11 workaround line in base.tcl
+    #   lineinfile:
+    #     line: rdi::x11_workaround
+    #     path: "{{ vivado_install_location }}/lib/scripts/rdi/features/base/base.tcl"
+    #     state: "{{ 'absent' if vivado_headless else 'present' }}"
+
+    - name: add line to user .bashrc to source vivado settings
+      lineinfile:
+        line: "source {{ ise_install_location }}/settings64.sh"
+        path: "~/.bashrc"
+        state: "{{ 'present' if ise_source_bashrc else 'absent' }}"
+
+    - name: ensure LC_ALL environment variable is properly setup
+      lineinfile:
+        line: "export LC_ALL=C.UTF-8"
+        path: "~/.bashrc"
+
+
+  # always:
+  #   - name: Clean up temporary files used during installation
+  #     file:
+  #       path: "{{ vivado_install_tmp_dir.path }}"
+  #       state: absent
+  #     changed_when: "False"
+  #     when: not vivado_existing_setup.stat.exists

@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  vars:
+      vivado_installer_archive_path: /tmp/installer.tar
+  pre_tasks:
+      - name: "copy installer"
+        copy:
+            src: "{{ lookup('env', 'XILINX_Ise_INSTALLER_TARBALL') }}"
+            dest: "{{ vivado_installer_archive_path }}"
+  roles:
+      - role: ansible-vivado
+        ise_version: 14.7
+        ise_edition: system
+        ise_location: /home/vagrant/Xilinx
+        ise_source_bashrc: true
