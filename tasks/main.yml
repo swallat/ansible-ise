@@ -44,7 +44,7 @@
     - name: Execute ISE installer
       command: >
         {{ ise_find_xsetup.files[0].path }}
-        --batch ise.conf
+        --batch {{ lookup('env', 'XILINX_ISE_INSTALLER_PATH') }}/ise.conf
       when: not ise_existing_setup.stat.exists
 
     # - name: Check if driver is already installed
